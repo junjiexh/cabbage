@@ -11,10 +11,56 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    networks:
+      - cabbage-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-ppassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cabbage-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/cabbage?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-your-api-key-here}
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - cabbage-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/settings"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cabbage-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - cabbage-network
+    restart: unless-stopped
+
+networks:
+  cabbage-network:
+    driver: bridge
 
 volumes:
   mysql_data:

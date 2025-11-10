@@ -29,13 +29,84 @@ Cabbage is an intelligent daily planner that uses AI to help you organize your d
 
 ## Prerequisites
 
+### Option 1: Docker (Recommended)
+- Docker and Docker Compose
+- Google Gemini API key
+
+### Option 2: Local Development
 - Node.js 18+ and npm
 - Java 17+
 - Maven 3.6+
 - MySQL 8.0+
 - Google Gemini API key
 
-## Setup Instructions
+## Quick Start with Docker (Recommended)
+
+The easiest way to run Cabbage is using Docker Compose, which will set up all services (MySQL, Backend, Frontend) automatically.
+
+### 1. Clone the Repository
+
+```bash
+git clone <repository-url>
+cd cabbage
+```
+
+### 2. Configure Environment
+
+```bash
+# Copy and edit the environment file
+cp .env.example .env
+
+# Edit .env and add your Gemini API key
+# Get your API key from: https://makersuite.google.com/app/apikey
+nano .env
+```
+
+### 3. Start All Services
+
+**Easy Way (Using startup script):**
+```bash
+# Make scripts executable (first time only)
+chmod +x start.sh stop.sh
+
+# Start all services
+./start.sh
+```
+
+**Manual Way:**
+```bash
+# Build and start all services
+docker-compose up --build
+
+# Or run in detached mode (background)
+docker-compose up -d --build
+```
+
+### 4. Access the Application
+
+- **Frontend**: http://localhost
+- **Backend API**: http://localhost:8080/api
+- **MySQL**: localhost:3306
+
+### 5. Stop Services
+
+**Easy Way (Using stop script):**
+```bash
+./stop.sh
+```
+
+**Manual Way:**
+```bash
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (deletes database data)
+docker-compose down -v
+```
+
+## Local Development Setup
+
+If you prefer to run the services locally without Docker:
 
 ### 1. Clone the Repository
 
@@ -190,21 +261,116 @@ mvn test            # Run tests
 mvn clean install   # Build JAR
 ```
 
+## Docker Commands
+
+### View Service Logs
+
+```bash
+# View all logs
+docker-compose logs
+
+# View specific service logs
+docker-compose logs backend
+docker-compose logs frontend
+docker-compose logs mysql
+
+# Follow logs in real-time
+docker-compose logs -f backend
+```
+
+### Rebuild Services
+
+```bash
+# Rebuild specific service
+docker-compose build backend
+docker-compose build frontend
+
+# Rebuild and restart
+docker-compose up -d --build backend
+```
+
+### Access Service Containers
+
+```bash
+# Access backend container
+docker exec -it cabbage-backend sh
+
+# Access MySQL container
+docker exec -it cabbage-mysql mysql -uroot -ppassword cabbage
+```
+
+### Clean Up
+
+```bash
+# Remove all containers and networks
+docker-compose down
+
+# Remove containers, networks, and volumes
+docker-compose down -v
+
+# Remove all unused Docker data
+docker system prune -a
+```
+
 ## Troubleshooting
 
+### Docker Issues
+
+**Port already in use:**
+```bash
+# Check what's using the port
+lsof -i :80    # Frontend
+lsof -i :8080  # Backend
+lsof -i :3306  # MySQL
+
+# Stop the service or change port in docker-compose.yml
+```
+
+**Services not starting:**
+```bash
+# Check service status
+docker-compose ps
+
+# View service logs
+docker-compose logs backend
+
+# Restart services
+docker-compose restart backend
+```
+
+**Database initialization issues:**
+```bash
+# Remove MySQL volume and restart
+docker-compose down -v
+docker-compose up -d mysql
+
+# Wait for MySQL to be ready, then start other services
+docker-compose up -d backend frontend
+```
+
+**Build cache issues:**
+```bash
+# Clear build cache and rebuild
+docker-compose build --no-cache
+docker-compose up -d
+```
+
 ### Database Connection Issues
-- Ensure MySQL is running
-- Verify database credentials in `application.properties`
-- Check if database `cabbage` exists
+- Ensure MySQL is running: `docker-compose ps`
+- Verify database credentials in `docker-compose.yml`
+- Check MySQL logs: `docker-compose logs mysql`
+- Wait for MySQL healthcheck to pass before backend starts
 
 ### Gemini API Issues
-- Verify your API key is correct
+- Verify your API key is correct in `.env` file
 - Check API key has required permissions
 - Ensure you have API quota available
+- Check backend logs: `docker-compose logs backend`
 
 ### CORS Issues
-- Check frontend URL is allowed in `CorsConfig.java`
-- Verify backend is running on port 8080
+- Check frontend is accessing backend via `localhost:8080`
+- Verify backend CORS configuration in `CorsConfig.java`
+- Check browser console for CORS errors
 
 ## License
 
