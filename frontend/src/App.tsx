@@ -1,34 +1,176 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useState, useEffect } from 'react'
 import './App.css'
+import { Todo, TimelineItem } from './types'
+import { api } from './api'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [todos, setTodos] = useState<Todo[]>([])
+  const [timeline, setTimeline] = useState<TimelineItem[]>([])
+  const [newTodo, setNewTodo] = useState({ title: '', description: '', duration: 30, priority: 3 })
+  const [startTime, setStartTime] = useState('09:00')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    loadTodos()
+  }, [])
+
+  const loadTodos = async () => {
+    try {
+      const data = await api.getTodos()
+      setTodos(data || [])
+    } catch (err) {
+      setError('Failed to load todos')
+      console.error(err)
+    }
+  }
+
+  const handleAddTodo = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newTodo.title) return
+
+    try {
+      await api.createTodo(newTodo)
+      setNewTodo({ title: '', description: '', duration: 30, priority: 3 })
+      await loadTodos()
+    } catch (err) {
+      setError('Failed to add todo')
+      console.error(err)
+    }
+  }
+
+  const handleDeleteTodo = async (id: number) => {
+    try {
+      await api.deleteTodo(id)
+      await loadTodos()
+    } catch (err) {
+      setError('Failed to delete todo')
+      console.error(err)
+    }
+  }
+
+  const handlePlanDay = async () => {
+    if (todos.length === 0) {
+      setError('Add some todos first!')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    try {
+      const timelineData = await api.planDay(todos, startTime)
+      setTimeline(timelineData)
+    } catch (err) {
+      setError('Failed to generate timeline')
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="app">
+      <header>
+        <h1>🥬 Cabbage - Day Planner</h1>
+      </header>
+
+      <div className="container">
+        <div className="todos-section">
+          <h2>Todo List</h2>
+
+          <form onSubmit={handleAddTodo} className="todo-form">
+            <input
+              type="text"
+              placeholder="Task title"
+              value={newTodo.title}
+              onChange={(e) => setNewTodo({ ...newTodo, title: e.target.value })}
+              required
+            />
+            <input
+              type="text"
+              placeholder="Description"
+              value={newTodo.description}
+              onChange={(e) => setNewTodo({ ...newTodo, description: e.target.value })}
+            />
+            <input
+              type="number"
+              placeholder="Duration (min)"
+              value={newTodo.duration}
+              onChange={(e) => setNewTodo({ ...newTodo, duration: parseInt(e.target.value) })}
+              min="1"
+            />
+            <select
+              value={newTodo.priority}
+              onChange={(e) => setNewTodo({ ...newTodo, priority: parseInt(e.target.value) })}
+            >
+              <option value="1">Priority: Low</option>
+              <option value="2">Priority: Medium-Low</option>
+              <option value="3">Priority: Medium</option>
+              <option value="4">Priority: Medium-High</option>
+              <option value="5">Priority: High</option>
+            </select>
+            <button type="submit">Add Todo</button>
+          </form>
+
+          <div className="todos-list">
+            {todos.length === 0 ? (
+              <p className="empty-state">No todos yet. Add one above!</p>
+            ) : (
+              todos.map((todo) => (
+                <div key={todo.id} className="todo-item">
+                  <div className="todo-content">
+                    <h3>{todo.title}</h3>
+                    <p>{todo.description}</p>
+                    <div className="todo-meta">
+                      <span>{todo.duration} min</span>
+                      <span>Priority: {todo.priority}</span>
+                    </div>
+                  </div>
+                  <button onClick={() => handleDeleteTodo(todo.id!)} className="delete-btn">
+                    ✕
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="plan-section">
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+            />
+            <button onClick={handlePlanDay} disabled={loading} className="plan-btn">
+              {loading ? 'Planning...' : '📅 Plan My Day'}
+            </button>
+          </div>
+
+          {error && <div className="error">{error}</div>}
+        </div>
+
+        <div className="timeline-section">
+          <h2>Timeline</h2>
+          {timeline.length === 0 ? (
+            <p className="empty-state">Click "Plan My Day" to generate your timeline</p>
+          ) : (
+            <div className="timeline-list">
+              {timeline.map((item, index) => (
+                <div key={index} className="timeline-item">
+                  <div className="timeline-time">
+                    <strong>{item.start_time}</strong> - {item.end_time}
+                  </div>
+                  <div className="timeline-content">
+                    <h3>{item.title}</h3>
+                    <p>{item.description}</p>
+                    <span className="duration">{item.duration} minutes</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    </div>
   )
 }
 
