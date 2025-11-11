@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import './App.css'
-import { Todo, TimelineItem } from './types'
+import type {Todo, TimelineItem} from './types'
 import { api } from './api'
 
 function App() {

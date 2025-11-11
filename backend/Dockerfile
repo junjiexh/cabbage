@@ -1,21 +1,16 @@
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
-# Copy go mod files
-COPY go.mod ./
-# Create go.sum if it doesn't exist
-RUN touch go.sum
-
-# Download dependencies
-RUN go mod download
-
-# Copy source code
+# Copy source code first
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/api
+# Download dependencies and build
+RUN go mod tidy && \
+    go mod download && \
+    go mod verify && \
+    CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/api
 
 # Runtime stage
 FROM alpine:latest

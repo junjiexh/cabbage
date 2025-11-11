@@ -1,4 +1,4 @@
-import { Todo, TimelineItem } from './types';
+import type {Todo, TimelineItem} from './types';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 

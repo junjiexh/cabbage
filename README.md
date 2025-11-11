@@ -40,13 +40,15 @@ cp .env.example .env
 
 3. Start the services:
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 This will start:
 - PostgreSQL database on port 5432
 - Backend API on port 8080
 - Frontend will need to be started separately (see below)
+
+**Note**: If using older Docker versions, use `docker-compose` (with hyphen) instead of `docker compose`
 
 4. Start the frontend:
 ```bash
