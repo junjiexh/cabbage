@@ -29,8 +29,19 @@ func New(connStr string) (*DB, error) {
 
 func (db *DB) InitSchema() error {
 	query := `
+	CREATE TABLE IF NOT EXISTS users (
+		id SERIAL PRIMARY KEY,
+		username VARCHAR(255) UNIQUE NOT NULL,
+		session_token VARCHAR(255) UNIQUE,
+		onboarding_completed BOOLEAN DEFAULT FALSE,
+		initial_goal TEXT,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);
+
 	CREATE TABLE IF NOT EXISTS todos (
 		id SERIAL PRIMARY KEY,
+		user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
 		title VARCHAR(255) NOT NULL,
 		description TEXT,
 		duration INTEGER NOT NULL,
@@ -41,6 +52,7 @@ func (db *DB) InitSchema() error {
 
 	CREATE TABLE IF NOT EXISTS timelines (
 		id SERIAL PRIMARY KEY,
+		user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
 		todo_ids INTEGER[] NOT NULL,
 		timeline_data JSONB NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

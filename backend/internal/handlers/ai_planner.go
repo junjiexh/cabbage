@@ -159,6 +159,95 @@ Do not include any markdown formatting or additional text. Return only the JSON 
 	return timeline, nil
 }
 
+// GenerateTodosFromGoal generates a list of todos based on a user's goal
+func (p *AIPlanner) GenerateTodosFromGoal(goal string) ([]models.Todo, error) {
+	if !p.useAI {
+		return p.generateSimpleTodos(goal), nil
+	}
+
+	return p.generateAITodos(goal)
+}
+
+func (p *AIPlanner) generateSimpleTodos(goal string) []models.Todo {
+	// Simple fallback: create a few generic todos
+	return []models.Todo{
+		{
+			Title:       fmt.Sprintf("研究和规划: %s", goal),
+			Description: "深入研究目标并制定详细计划",
+			Duration:    60,
+			Priority:    5,
+		},
+		{
+			Title:       fmt.Sprintf("开始学习: %s", goal),
+			Description: "开始学习相关知识和技能",
+			Duration:    90,
+			Priority:    4,
+		},
+		{
+			Title:       fmt.Sprintf("实践练习: %s", goal),
+			Description: "通过练习巩固所学内容",
+			Duration:    120,
+			Priority:    3,
+		},
+		{
+			Title:       "总结和复习",
+			Description: "回顾今天的学习成果",
+			Duration:    30,
+			Priority:    2,
+		},
+	}
+}
+
+func (p *AIPlanner) generateAITodos(goal string) ([]models.Todo, error) {
+	ctx := context.Background()
+
+	prompt := fmt.Sprintf(`你是一个智能任务规划助手。用户的目标是: "%s"
+
+请为这个目标生成一个合理的待办事项列表。这些任务应该:
+1. 具体可执行
+2. 按照优先级排序 (1-5，5最高)
+3. 有合理的时间估计（分钟）
+4. 涵盖达成目标的关键步骤
+
+返回一个JSON数组，格式如下（不要包含markdown格式或其他文本）:
+[
+  {
+    "title": "任务标题",
+    "description": "任务详细描述",
+    "duration": 60,
+    "priority": 5
+  }
+]
+
+请生成5-8个任务，确保它们能帮助用户有效地朝目标前进。`, goal)
+
+	resp, err := p.model.GenerateContent(ctx, genai.Text(prompt))
+	if err != nil {
+		log.Printf("AI generation failed, falling back to simple todos: %v", err)
+		return p.generateSimpleTodos(goal), nil
+	}
+
+	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
+		return p.generateSimpleTodos(goal), nil
+	}
+
+	responseText := fmt.Sprintf("%v", resp.Candidates[0].Content.Parts[0])
+
+	// Clean up response
+	responseText = strings.TrimPrefix(responseText, "```json")
+	responseText = strings.TrimPrefix(responseText, "```")
+	responseText = strings.TrimSuffix(responseText, "```")
+	responseText = strings.TrimSpace(responseText)
+
+	var todos []models.Todo
+	if err := json.Unmarshal([]byte(responseText), &todos); err != nil {
+		log.Printf("Failed to parse AI response, falling back to simple todos: %v. Response: %s", err, responseText)
+		return p.generateSimpleTodos(goal), nil
+	}
+
+	return todos, nil
+}
+
 func (p *AIPlanner) Close() {
 	if p.client != nil {
 		p.client.Close()

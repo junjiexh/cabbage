@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import './App.css'
-import type {Todo, TimelineItem} from './types'
+import type {Todo, TimelineItem, User, OnboardingResponse} from './types'
 import { api } from './api'
+import { Onboarding } from './Onboarding'
 
 function App() {
+  const [user, setUser] = useState<User | null>(null)
+  const [userLoading, setUserLoading] = useState(true)
   const [todos, setTodos] = useState<Todo[]>([])
   const [timeline, setTimeline] = useState<TimelineItem[]>([])
   const [newTodo, setNewTodo] = useState({ title: '', description: '', duration: 30, priority: 3 })
@@ -12,8 +15,31 @@ function App() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    loadTodos()
+    initializeApp()
   }, [])
+
+  const initializeApp = async () => {
+    try {
+      // Get or create user
+      const userData = await api.getCurrentUser()
+      setUser(userData)
+
+      // If onboarding is completed, load todos
+      if (userData.onboarding_completed) {
+        await loadTodos()
+      }
+    } catch (err) {
+      setError('Failed to initialize app')
+      console.error(err)
+    } finally {
+      setUserLoading(false)
+    }
+  }
+
+  const handleOnboardingComplete = (response: OnboardingResponse) => {
+    setUser(response.user)
+    setTodos(response.todos)
+  }
 
   const loadTodos = async () => {
     try {
@@ -68,10 +94,28 @@ function App() {
     }
   }
 
+  // Show loading state while checking user
+  if (userLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🥬</div>
+          <p className="text-gray-600">加载中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show onboarding if user hasn't completed it
+  if (user && !user.onboarding_completed) {
+    return <Onboarding onComplete={handleOnboardingComplete} />
+  }
+
   return (
     <div className="app">
       <header>
         <h1>🥬 Cabbage - Day Planner</h1>
+        {user && <p className="text-sm text-gray-600">欢迎回来, {user.username}!</p>}
       </header>
 
       <div className="container">

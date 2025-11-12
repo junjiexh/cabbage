@@ -2,8 +2,19 @@ package models
 
 import "time"
 
+type User struct {
+	ID                   int       `json:"id"`
+	Username             string    `json:"username"`
+	SessionToken         string    `json:"session_token,omitempty"`
+	OnboardingCompleted  bool      `json:"onboarding_completed"`
+	InitialGoal          string    `json:"initial_goal,omitempty"`
+	CreatedAt            time.Time `json:"created_at"`
+	UpdatedAt            time.Time `json:"updated_at"`
+}
+
 type Todo struct {
 	ID          int       `json:"id"`
+	UserID      int       `json:"user_id,omitempty"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Duration    int       `json:"duration"` // in minutes
@@ -34,4 +45,14 @@ type PlanRequest struct {
 
 type PlanResponse struct {
 	Timeline []TimelineItem `json:"timeline"`
+}
+
+type OnboardingRequest struct {
+	Username string `json:"username"`
+	Goal     string `json:"goal"`
+}
+
+type OnboardingResponse struct {
+	User  User   `json:"user"`
+	Todos []Todo `json:"todos"`
 }

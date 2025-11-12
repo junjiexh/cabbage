@@ -55,16 +55,22 @@ func main() {
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:3000"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Session-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
+	r.Use(h.AuthMiddleware) // Apply auth middleware globally
 
 	// Routes
 	r.Get("/health", h.Health)
 
 	r.Route("/api", func(r chi.Router) {
+		// User routes
+		r.Get("/user", h.GetOrCreateUser)
+		r.Post("/onboarding", h.CompleteOnboarding)
+
+		// Todo routes (require auth)
 		r.Get("/todos", h.GetTodos)
 		r.Post("/todos", h.CreateTodo)
 		r.Put("/todos/{id}", h.UpdateTodo)
